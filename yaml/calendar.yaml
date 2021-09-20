@@ -1,0 +1,94 @@
+##################################################################################################
+# Refund service
+##################################################################################################
+
+apiVersion: v1
+data:
+  shim.js: |-
+    require("appdynamics").profile({
+        controllerHostName: 'XYZ.saas.appdynamics.com',
+        controllerPort: 80,
+        controllerSslEnabled: false,
+        accountName: 'ACCOUNT_NAME',
+        accountAccessKey: 'ACCESS_KEY',
+        applicationName: 'healthcare',
+        tierName: 'calendarService',
+        nodeName: 'calendarService',
+        analyticsHostName: 'XYZ.saas.appdynamics.com',
+        analyticsPort: 443,
+        analyticsSslEnabled: true,
+        analytics: {
+              host: 'appd-infraviz.appdynamics',
+              port: 9090,
+            SSL: false }});
+        require("./calendar.js")
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: appd-nodejs-cm
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: calendar
+    version: "1"
+  name: calendar
+spec:
+  ports:
+  - port: 5050
+    protocol: TCP
+    targetPort: 5050
+  selector:
+    app: calendar
+    version: "1"
+  type: LoadBalancer
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calendar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calendar
+  template:
+    metadata:
+      labels:
+        app: calendar
+        version: "1"
+    spec:
+      containers:
+      - env:
+        - name: APPD_PROXY_CONTROL_PATH
+          value: /tmp/appd/run
+        name: refund
+        image: sgioia/healthcare-calendar:latest
+        imagePullPolicy: Always
+        volumeMounts:
+          - name: agent-config
+            mountPath: /shim.js
+            subPath: shim.js
+        ports:
+        - containerPort: 5050
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 5050
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 5050
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+        - name: agent-config
+          configMap:
+            name: appd-nodejs-cm

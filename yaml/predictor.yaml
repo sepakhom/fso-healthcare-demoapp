@@ -1,0 +1,118 @@
+##################################################################################################
+# Predictor service
+##################################################################################################
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: predictor
+    version: "1"
+  name: predictor
+spec:
+  ports:
+  - port: 5001
+    protocol: TCP
+    targetPort: 5001
+  selector:
+    app: predictor
+    version: "1"
+  type: LoadBalancer
+
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  creationTimestamp: null
+#  labels:
+#    app: predictor
+#    version: "1"
+#  name: predictor
+#spec:
+#  ports:
+#  - port: 5001
+#    protocol: TCP
+#    targetPort: 5001
+#  selector:
+#    app: predictor
+#    version: "1"
+#  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-config-python-predictor
+data:
+  agent.cfg: |-
+    [agent]
+    app = healthcare
+    tier = bookingService
+    node = bookingService
+    [controller]
+    host = XYZ.saas.appdynamics.com
+    port = 80
+    ssl = off
+    account = ACCOUNT_NAME
+    accesskey = ACCESS_KEY
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: predictor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: predictor
+  template:
+    metadata:
+      labels:
+        app: predictor
+        version: "1"
+    spec:
+      containers:
+      - env:
+        - name: REDIS_SERVICE
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: APPD_PROXY_CONTROL_PATH
+          value: /tmp/appd/run
+        name: predictor
+        image: sgioia/healthcare-predictor:latest #rtortori/survivor-predictor-brkcld-2889:latest
+        imagePullPolicy: Always
+        volumeMounts:
+          - name: shared-data
+            mountPath: /tmp/appd/run
+          - name: agent-config
+            mountPath: /opt/appdynamics/agent.cfg
+            subPath: agent.cfg
+        ports:
+        - containerPort: 5001
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 5001
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 5001
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      - name: proxy
+        image: sashaz/python-proxy:v1
+        imagePullPolicy: Always
+        env:
+          - name: APPD_PROXY_CONTROL_PATH
+            value: /tmp/appd/run
+        volumeMounts:
+        - name: shared-data
+          mountPath: /tmp/appd/run
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+      - name: agent-config
+        configMap:
+          name: agent-config-python-predictor
