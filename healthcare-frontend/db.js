@@ -3,8 +3,9 @@ const redis = require("redis");
  // DB Connection. In this case is Redis Client 
  const redisHost = process.env.REDIS_SERVICE 
  const redisPort = process.env.REDIS_PORT 
+ const redisCacheKey = process.env.REDISCACHEKEY
 
- const dbConnection = redis.createClient(redisPort, redisHost);
+ const dbConnection = redis.createClient(redisPort, redisHost, {auth_pass: redisCacheKey });
  
  dbConnection.on("connect", function () {
      redisReachable = true;
