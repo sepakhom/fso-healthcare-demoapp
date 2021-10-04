@@ -23,6 +23,7 @@ serve_delay = 1
 
 try:
     redis_service = os.environ['REDIS_SERVICE']
+    redis_auth_token = os.environ['REDISCACHEKEY']
 except:
     redis_service = '127.0.0.1'
 
@@ -35,8 +36,8 @@ log.debug('Redis target is: {}'.format(redis_service))
 
 
 # Redis support in version 2
-r = redis.Redis(host=redis_service, port=redis_port,
-                db=0, socket_connect_timeout=2)
+r = redis.StrictRedis(host=redis_service, 
+        port=redis_port, db=0, password=redis_auth_token, ssl=False)
 
 
 # Flask app object
