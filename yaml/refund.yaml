@@ -69,6 +69,8 @@ spec:
           value: "redis"
         - name: REDIS_PORT
           value: "6379"
+        - name: REDISCACHEKEY
+          value: "YOUR_TOKEN"
         - name: APPD_PROXY_CONTROL_PATH
           value: /tmp/appd/run
         name: refund
