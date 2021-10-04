@@ -38,6 +38,7 @@ require("console-stamp")(console, "ddd mmm dd yyyy HH:MM:ss");
 // variable used
 var REDIS_IP = process.env.REDIS_SERVICE
 var REDIS_PORT = process.env.REDIS_PORT
+const redisCacheKey = process.env.REDISCACHEKEY
 
 
 const APP_PORT = 5050;
@@ -61,11 +62,8 @@ app.use(
   })
 );
 
-var client = redis.createClient({
-  port: REDIS_PORT,
-  host: REDIS_IP,
-  socket_keepalive: true
-});
+
+const client = redis.createClient(redisPort, redisHost, {auth_pass: redisCacheKey });
 
 // connecting to the db
 client.on("connect", function () {
